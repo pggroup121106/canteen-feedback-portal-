@@ -17,16 +17,30 @@ import {
   Filter,
   Lock,
   UserCheck,
-  Bell
+  Bell,
+  AlertTriangle,
+  Layers,
+  History,
+  MailCheck
 } from 'lucide-react';
 import { AdminProfile, SystemSettings } from '../../types/database';
 import { PgLogo } from '../common/PgLogo';
 
+export type AdminTab = 
+  | 'dashboard'
+  | 'unsatisfied'
+  | 'actions'
+  | 'action_history'
+  | 'email_logs'
+  | 'feed'
+  | 'logs'
+  | 'settings';
+
 interface Props {
   admin: AdminProfile;
   settings: SystemSettings;
-  activeTab: 'dashboard' | 'feed' | 'logs' | 'settings';
-  onTabChange: (tab: 'dashboard' | 'feed' | 'logs' | 'settings') => void;
+  activeTab: AdminTab;
+  onTabChange: (tab: AdminTab) => void;
   onLogout: () => void;
   onSwitchToKiosk?: () => void;
   onToggleTheme: () => void;
@@ -63,22 +77,32 @@ export const AdminLayout: React.FC<Props> = ({
   const isHrAdmin = admin.role === 'hr_admin';
 
   const allNavItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'dashboard', label: 'Feedback Overview', icon: LayoutDashboard },
+    { id: 'unsatisfied', label: 'Unsatisfied Feedback', icon: AlertTriangle },
+    { id: 'actions', label: 'Action Management', icon: Layers },
+    { id: 'action_history', label: 'Action Taken History', icon: History },
+    { id: 'email_logs', label: 'Email Logs', icon: MailCheck },
     { id: 'feed', label: 'Employee Feed', icon: Users },
     { id: 'logs', label: 'Feedback Logs', icon: MessageSquareQuote },
     { id: 'settings', label: 'System Settings', icon: Settings },
   ] as const;
 
-  // HR Admin only gets Dashboard + Employee Feed; IT Admin gets all
+  // HR Admin gets Dashboard, Unsatisfied, Action Management, Action History, and Employee Feed
   const navItems = isHrAdmin
-    ? allNavItems.filter(item => item.id === 'dashboard' || item.id === 'feed')
+    ? allNavItems.filter(item => 
+        item.id === 'dashboard' || 
+        item.id === 'unsatisfied' || 
+        item.id === 'actions' || 
+        item.id === 'action_history' || 
+        item.id === 'feed'
+      )
     : allNavItems;
 
   const toggleLanguage = () => {
     i18n.changeLanguage(i18n.language === 'hi' ? 'en' : 'hi');
   };
 
-  const handleNavClick = (tabId: 'dashboard' | 'feed' | 'logs' | 'settings') => {
+  const handleNavClick = (tabId: AdminTab) => {
     onTabChange(tabId);
     setMobileOpen(false);
   };

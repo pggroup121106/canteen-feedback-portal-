@@ -68,6 +68,68 @@ export const INITIAL_SETTINGS: SystemSettings = {
     scheduled_time: '20:00',
     unsatisfied_threshold_alert: 20,
   },
+  email_tiers: {
+    enabled: true,
+    scheduled_time: '20:00',
+    admin_emails: [
+      {
+        id: 'cfg-adm-1',
+        tier: 'admin',
+        email: 'software.2040@pgel.in',
+        name: 'IT / Operations Admin',
+        plant_ids: ['plant-1'],
+        frequency: 'daily',
+        status: 'active',
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: 'cfg-adm-2',
+        tier: 'admin',
+        email: 'canteen.ngm@pgel.in',
+        name: 'NGM Canteen Admin',
+        plant_ids: ['plant-2'],
+        frequency: 'daily',
+        status: 'active',
+        created_at: new Date().toISOString(),
+      }
+    ],
+    hr_emails: [
+      {
+        id: 'cfg-hr-1',
+        tier: 'hr',
+        email: 'hr.bhiwadi@pgel.in',
+        name: 'HR Plant Lead',
+        plant_ids: ['plant-1'],
+        frequency: '7_days',
+        status: 'active',
+        created_at: new Date().toISOString(),
+      }
+    ],
+    plant_head_emails: [
+      {
+        id: 'cfg-ph-1',
+        tier: 'plant_head',
+        email: 'planthead.2040@pgel.in',
+        name: 'Plant Head (PGTL 2040)',
+        plant_ids: ['plant-1'],
+        frequency: '15_days',
+        status: 'active',
+        created_at: new Date().toISOString(),
+      }
+    ],
+    top_management_emails: [
+      {
+        id: 'cfg-tm-1',
+        tier: 'top_management',
+        email: 'management@pgel.in',
+        name: 'Executive Management',
+        plant_ids: ['all'],
+        frequency: 'monthly',
+        status: 'active',
+        created_at: new Date().toISOString(),
+      }
+    ]
+  },
 };
 
 export const DEMO_ADMINS: AdminProfile[] = [

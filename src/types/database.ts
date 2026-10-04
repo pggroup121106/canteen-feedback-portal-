@@ -98,6 +98,77 @@ export interface SystemSettings {
   notification_email?: string;
   enable_email_alerts?: boolean;
   daily_digest?: DailyDigestConfig;
+  email_tiers?: MultiTierEmailConfig;
+}
+
+export type EmailTier = 'admin' | 'hr' | 'plant_head' | 'top_management';
+export type EmailFrequency = 'daily' | '7_days' | '15_days' | 'monthly';
+
+export interface EmailRecipientConfig {
+  id: string;
+  tier: EmailTier;
+  email: string;
+  name?: string;
+  plant_ids: string[]; // ['plant-1'] or ['plant-1', 'plant-2'] or ['all']
+  frequency: EmailFrequency;
+  status: 'active' | 'inactive';
+  created_at?: string;
+  last_sent_at?: string;
+}
+
+export interface MultiTierEmailConfig {
+  enabled: boolean;
+  admin_emails: EmailRecipientConfig[];
+  hr_emails: EmailRecipientConfig[];
+  plant_head_emails: EmailRecipientConfig[];
+  top_management_emails: EmailRecipientConfig[];
+  scheduled_time?: string; // e.g. "20:00" IST
+}
+
+export type ActionStatus = 'Pending' | 'In Progress' | 'Action Taken' | 'Closed';
+
+export interface ActionAuditLog {
+  updated_by: string;
+  updated_at: string;
+  previous_status?: ActionStatus;
+  new_status?: ActionStatus;
+  note?: string;
+}
+
+export interface ActionTakenEntry {
+  id: string;
+  issue_title: string;
+  plant_id: string;
+  plant_name?: string;
+  feedback_ids: string[];
+  complaint_count: number;
+  action_description: string;
+  responsible_person: string;
+  responsible_dept: string;
+  action_date: string; // YYYY-MM-DD
+  status: ActionStatus;
+  created_at: string;
+  updated_at: string;
+  created_by: string;
+  audit_trail: ActionAuditLog[];
+}
+
+export interface EmailDeliveryLog {
+  id: string;
+  timestamp: string; // ISO
+  tier: EmailTier;
+  recipient_email: string;
+  recipient_name?: string;
+  plant_id: string;
+  plant_name: string;
+  reporting_period: string; // e.g. "2026-09-28 to 2026-10-04"
+  feedbacks_count: number;
+  satisfied_count: number;
+  unsatisfied_count: number;
+  status: 'success' | 'failed';
+  error_message?: string;
+  message_id?: string;
+  subject: string;
 }
 
 export interface FeedbackFilterOptions {
@@ -125,4 +196,5 @@ export interface DashboardStats {
   actionsTakenCount: number;
   pendingActionsCount: number;
 }
+
 

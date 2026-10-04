@@ -6,7 +6,11 @@ import {
   SystemSettings, 
   FeedbackFilterOptions,
   DashboardStats,
-  AdminProfile
+  AdminProfile,
+  ActionTakenEntry,
+  EmailDeliveryLog,
+  EmailTier,
+  MultiTierEmailConfig
 } from '../types/database';
 import { 
   INITIAL_PLANTS, 
@@ -426,6 +430,7 @@ export const triggerDailyDigestEmail = async (options?: {
   plant_id?: string;
   to_emails?: string[];
   cc_emails?: string[];
+  tier?: EmailTier;
 }): Promise<{ ok: boolean; message?: string; error?: string }> => {
   try {
     const response = await fetch('/api/daily-digest', {
@@ -435,6 +440,7 @@ export const triggerDailyDigestEmail = async (options?: {
         is_test: options?.is_test ?? false,
         force: options?.force ?? true,
         plant_id: options?.plant_id,
+        tier: options?.tier,
         to_emails: options?.to_emails,
         cc_emails: options?.cc_emails,
       }),
@@ -449,6 +455,123 @@ export const triggerDailyDigestEmail = async (options?: {
   } catch (err: any) {
     console.error('Trigger daily digest failed', err);
     throw err;
+  }
+};
+
+export const triggerMultiTierTestEmail = async (options: {
+  tier: EmailTier;
+  recipient_id?: string;
+  email?: string;
+  plant_id?: string;
+}): Promise<{ ok: boolean; message?: string; error?: string }> => {
+  try {
+    const response = await fetch('/api/daily-digest', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        is_test: true,
+        tier: options.tier,
+        recipient_id: options.recipient_id,
+        email: options.email,
+        plant_id: options.plant_id,
+      }),
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data?.error || data?.details || 'Failed to send test email');
+    }
+
+    return { ok: true, message: data?.message || 'Test email dispatched successfully' };
+  } catch (err: any) {
+    console.error('Trigger multi-tier test email failed:', err);
+    throw err;
+  }
+};
+
+export const fetchActions = async (plantId?: string): Promise<ActionTakenEntry[]> => {
+  try {
+    const url = plantId && plantId !== 'all' ? `/api/actions?plant_id=${encodeURIComponent(plantId)}` : '/api/actions';
+    const response = await fetch(url);
+    if (!response.ok) return [];
+    const data = await response.json();
+    return Array.isArray(data?.actions) ? data.actions : [];
+  } catch (e) {
+    console.warn('fetchActions API failed, returning empty list:', e);
+    return [];
+  }
+};
+
+export const saveAction = async (actionData: Partial<ActionTakenEntry>): Promise<ActionTakenEntry> => {
+  try {
+    const response = await fetch('/api/actions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(actionData),
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data?.error || 'Failed to create action taken');
+    }
+    return data.action;
+  } catch (e: any) {
+    console.error('saveAction error:', e);
+    throw e;
+  }
+};
+
+export const updateAction = async (
+  id: string,
+  updates: Partial<ActionTakenEntry>,
+  updatedBy: string = 'Admin',
+  note?: string
+): Promise<ActionTakenEntry> => {
+  try {
+    const response = await fetch('/api/actions', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, updates, updated_by: updatedBy, note }),
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data?.error || 'Failed to update action taken');
+    }
+    return data.action;
+  } catch (e: any) {
+    console.error('updateAction error:', e);
+    throw e;
+  }
+};
+
+export const deleteAction = async (id: string): Promise<void> => {
+  try {
+    const response = await fetch(`/api/actions?id=${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data?.error || 'Failed to delete action');
+    }
+  } catch (e: any) {
+    console.error('deleteAction error:', e);
+    throw e;
+  }
+};
+
+export const fetchEmailLogs = async (tier?: string, plantId?: string): Promise<EmailDeliveryLog[]> => {
+  try {
+    const params = new URLSearchParams();
+    if (tier && tier !== 'all') params.append('tier', tier);
+    if (plantId && plantId !== 'all') params.append('plant_id', plantId);
+
+    const query = params.toString() ? `?${params.toString()}` : '';
+    const response = await fetch(`/api/email-logs${query}`);
+    if (!response.ok) return [];
+    const data = await response.json();
+    return Array.isArray(data?.logs) ? data.logs : [];
+  } catch (e) {
+    console.warn('fetchEmailLogs error:', e);
+    return [];
   }
 };
 
