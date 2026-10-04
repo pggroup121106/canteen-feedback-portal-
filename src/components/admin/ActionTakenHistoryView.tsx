@@ -341,9 +341,9 @@ export const ActionTakenHistoryView: React.FC<Props> = ({
         title="Delete Action Record"
         message="Are you sure you want to delete this Action Taken record? Linked feedbacks will be unlinked and return to pending status."
         confirmText="Yes, Delete Action"
-        confirmVariant="danger"
+        isDanger={true}
         onConfirm={handleDeleteConfirm}
-        onCancel={() => setDeletingActionId(null)}
+        onClose={() => setDeletingActionId(null)}
       />
     </div>
   );

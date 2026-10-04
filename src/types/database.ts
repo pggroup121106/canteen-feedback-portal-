@@ -42,6 +42,8 @@ export interface FeedbackEntry {
   shift: ShiftType;
   food_taste: number;
   food_quality: number;
+  food_quantity?: number;
+  service_speed?: number;
   staff_behaviour: number;
   hygiene: number;
   overall_rating: number;
@@ -150,6 +152,7 @@ export interface ActionTakenEntry {
   created_at: string;
   updated_at: string;
   created_by: string;
+  note?: string;
   audit_trail: ActionAuditLog[];
 }
 

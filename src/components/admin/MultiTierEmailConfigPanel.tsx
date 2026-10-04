@@ -730,9 +730,9 @@ export const MultiTierEmailConfigPanel: React.FC<Props> = ({
         title="Remove Email Recipient"
         message={`Are you sure you want to remove ${deletingRecipient?.email} from the ${activeTier.toUpperCase()} recipient list?`}
         confirmText="Yes, Remove"
-        confirmVariant="danger"
+        isDanger={true}
         onConfirm={handleDeleteRecipientConfirm}
-        onCancel={() => setDeletingRecipient(null)}
+        onClose={() => setDeletingRecipient(null)}
       />
     </div>
   );
