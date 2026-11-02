@@ -174,7 +174,7 @@ export default async function handler(req: any, res: any) {
     );
 
     // 5. Send OTP via SMTP
-    const fromAddress = process.env.SMTP_FROM || process.env.SMTP_USER || 'verify.software2040@pgel.in';
+    const fromAddress = process.env.SMTP_FROM || process.env.SMTP_USER || 'software.2040@pgel.in';
     const fromName = process.env.SMTP_FROM_NAME || 'IT Department - PG Group';
     const subject = 'Canteen Feedback - Login Verification Code';
 
