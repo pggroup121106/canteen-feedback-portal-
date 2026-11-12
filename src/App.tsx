@@ -6,13 +6,11 @@ import {
   Plant, 
   SystemSettings, 
   FeedbackFilterOptions,
-  AdminProfile,
-  ActionTakenEntry
+  AdminProfile
 } from './types/database';
 import { 
   fetchFeedbacks, 
   fetchPlants, 
-  migrateLocalPlantsToApi,
   fetchSettings, 
   fetchAdmins,
   saveAdminUser,
@@ -26,24 +24,18 @@ import {
   calculateDashboardStats,
   subscribeToRealtimeFeedback,
   setAdminSession,
-  getCurrentAdminSession,
-  fetchActions
+  getCurrentAdminSession
 } from './lib/supabase';
 import { sendDesktopNotification } from './lib/soundEffects';
 
 // Kiosk & Admin Components
 import { FeedbackFlow } from './components/kiosk/FeedbackFlow';
-import { AdminLayout, AdminTab } from './components/admin/AdminLayout';
+import { AdminLayout } from './components/admin/AdminLayout';
 import { AdminLogin } from './components/admin/AdminLogin';
 import { DashboardOverview } from './components/admin/DashboardOverview';
 import { FeedbackTable } from './components/admin/FeedbackTable';
 import { SettingsPage } from './components/admin/SettingsPage';
 import { EmployeeFeedView } from './components/admin/EmployeeFeedView';
-import { UnsatisfiedFeedbackView } from './components/admin/UnsatisfiedFeedbackView';
-import { ActionManagementView } from './components/admin/ActionManagementView';
-import { ActionTakenHistoryView } from './components/admin/ActionTakenHistoryView';
-import { EmailLogsView } from './components/admin/EmailLogsView';
-import { ActionManagementModal } from './components/admin/ActionManagementModal';
 import { LiveFeedbackPopupModal } from './components/common/LiveFeedbackPopupModal';
 import { StartScreen } from './components/common/StartScreen';
 
@@ -74,7 +66,7 @@ const playAlertChime = () => {
 export const App: React.FC = () => {
   const [appMode, setAppMode] = useState<'start_screen' | 'admin_login' | 'admin_dashboard' | 'kiosk'>('start_screen');
   const [activeAdmin, setActiveAdmin] = useState<AdminProfile | null>(null);
-  const [adminTab, setAdminTab] = useState<AdminTab>('dashboard');
+  const [adminTab, setAdminTab] = useState<'dashboard' | 'feed' | 'logs' | 'settings'>('dashboard');
   // Track if kiosk was opened via QR scan (public URL) — hides Admin Portal button
   const [isQrKiosk, setIsQrKiosk] = useState<boolean>(false);
 
@@ -83,12 +75,6 @@ export const App: React.FC = () => {
   const [adminUsers, setAdminUsers] = useState<AdminProfile[]>([]);
   const [settings, setSettings] = useState<SystemSettings | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-
-  // Action Management & Grouped Issue State
-  const [actions, setActions] = useState<ActionTakenEntry[]>([]);
-  const [isGlobalActionModalOpen, setIsGlobalActionModalOpen] = useState(false);
-  const [selectedFeedbacksForAction, setSelectedFeedbacksForAction] = useState<FeedbackEntry[]>([]);
-  const [editingActionForModal, setEditingActionForModal] = useState<ActionTakenEntry | null>(null);
 
   // Header Analytics Filter Bar Toggle State
   const [isHeaderFilterOpen, setIsHeaderFilterOpen] = useState<boolean>(false);
@@ -126,8 +112,11 @@ export const App: React.FC = () => {
   // so that the exact moment the configured IST dispatch time arrives, the email is dispatched automatically.
   useEffect(() => {
     const pingDigest = async () => {
+      // Don't ping if device is offline or screen/document is suspended
+      if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
       try {
-        await fetch('/api/daily-digest');
+        await fetch('/api/daily-digest', { cache: 'no-store' });
       } catch {
         // silent background ping
       }
@@ -221,22 +210,19 @@ export const App: React.FC = () => {
           // Default start screen on refresh
           setIsQrKiosk(false);
           setAppMode('start_screen');
-          await migrateLocalPlantsToApi();
         }
 
-        const [fetchedFeedbacks, fetchedPlants, fetchedSettings, fetchedAdmins, fetchedActions] = await Promise.all([
+        const [fetchedFeedbacks, fetchedPlants, fetchedSettings, fetchedAdmins] = await Promise.all([
           fetchFeedbacks(undefined, { migrateLocal: true }),
           fetchPlants(),
           fetchSettings(),
           fetchAdmins(),
-          fetchActions(),
         ]);
 
         setFeedbacks(fetchedFeedbacks);
         setPlants(fetchedPlants);
         setSettings(fetchedSettings);
         setAdminUsers(fetchedAdmins);
-        setActions(fetchedActions);
         
         previousFeedbackIdsRef.current = new Set(fetchedFeedbacks.map(f => f.id));
       } catch (err) {
@@ -317,24 +303,13 @@ export const App: React.FC = () => {
     };
   }, []);
 
-  const loadActionsData = async () => {
-    try {
-      const data = await fetchActions(activeAdmin?.plant_id);
-      setActions(data);
-    } catch (e) {
-      console.warn('Failed to load actions', e);
-    }
-  };
-
   const handleManualRefreshData = async () => {
     const latest = await fetchFeedbacks(activeFilters);
     const fetchedPlants = await fetchPlants();
     const fetchedAdmins = await fetchAdmins();
-    const fetchedActions = await fetchActions(activeAdmin?.plant_id);
     setFeedbacks(latest);
     setPlants(fetchedPlants);
     setAdminUsers(fetchedAdmins);
-    setActions(fetchedActions);
     toast.success(`Data refreshed successfully! (${latest.length} records loaded)`);
   };
 
@@ -530,14 +505,11 @@ export const App: React.FC = () => {
             settings={settings}
             activeTab={adminTab}
             onTabChange={(tab) => {
-              // HR Admin restriction — only allow dashboard, unsatisfied, actions, action_history, feed
-              if (activeAdmin.role === 'hr_admin' && (tab === 'logs' || tab === 'settings' || tab === 'email_logs')) {
+              // HR Admin restriction — only allow 'dashboard' and 'feed'
+              if (activeAdmin.role === 'hr_admin' && (tab === 'logs' || tab === 'settings')) {
                 return; // Silently block restricted tabs
               }
               if (tab === 'feed') setUnreadCount(0);
-              if (tab === 'actions' || tab === 'action_history' || tab === 'unsatisfied') {
-                loadActionsData();
-              }
               setAdminTab(tab);
             }}
             unreadCount={unreadCount}
@@ -563,50 +535,6 @@ export const App: React.FC = () => {
                 onUpdateEntry={handleUpdateEntry}
                 adminName={activeAdmin?.full_name}
                 isItAdmin={activeAdmin?.role === 'super_admin' || activeAdmin?.role === 'it_admin'}
-              />
-            )}
-
-            {adminTab === 'unsatisfied' && (
-              <UnsatisfiedFeedbackView
-                feedbacks={effectiveFeedbacks}
-                plants={effectivePlants}
-                actions={actions}
-                onOpenActionModal={(selectedList) => {
-                  setSelectedFeedbacksForAction(selectedList);
-                  setEditingActionForModal(null);
-                  setIsGlobalActionModalOpen(true);
-                }}
-              />
-            )}
-
-            {adminTab === 'actions' && (
-              <ActionManagementView
-                feedbacks={effectiveFeedbacks}
-                plants={effectivePlants}
-                actions={actions}
-                adminName={activeAdmin?.full_name}
-                onRefreshActions={loadActionsData}
-                onUpdateFeedbackEntry={handleUpdateEntry}
-              />
-            )}
-
-            {adminTab === 'action_history' && (
-              <ActionTakenHistoryView
-                actions={actions}
-                plants={effectivePlants}
-                currentAdminRole={activeAdmin?.role}
-                onEditAction={(action) => {
-                  setEditingActionForModal(action);
-                  setSelectedFeedbacksForAction([]);
-                  setIsGlobalActionModalOpen(true);
-                }}
-                onRefreshActions={loadActionsData}
-              />
-            )}
-
-            {adminTab === 'email_logs' && (
-              <EmailLogsView
-                plants={effectivePlants}
               />
             )}
 
@@ -649,20 +577,6 @@ export const App: React.FC = () => {
               />
             )}
           </AdminLayout>
-
-          {/* Global Action Management Modal */}
-          <ActionManagementModal
-            isOpen={isGlobalActionModalOpen}
-            onClose={() => setIsGlobalActionModalOpen(false)}
-            selectedFeedbacks={selectedFeedbacksForAction}
-            plants={effectivePlants}
-            adminName={activeAdmin?.full_name}
-            existingAction={editingActionForModal}
-            onActionSaved={() => {
-              loadActionsData();
-              handleManualRefreshData();
-            }}
-          />
         </>
       )}
 
