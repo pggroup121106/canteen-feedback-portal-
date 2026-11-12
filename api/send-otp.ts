@@ -73,7 +73,7 @@ function getTransporter() {
   const host = process.env.SMTP_HOST || 'smtp.office365.com';
   const port = Number(process.env.SMTP_PORT) || 587;
   const user = process.env.SMTP_USER || 'verify.software2040@pgel.in';
-  const pass = process.env.SMTP_PASSWORD || process.env.SMTP_PASS || 'nsxfmjjkskdrbbtt';
+  const pass = process.env.SMTP_PASSWORD || process.env.SMTP_PASS || 'rypvzstnlgnbwymr';
 
   return nodemailer.createTransport({
     host,
